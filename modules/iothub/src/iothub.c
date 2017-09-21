@@ -55,6 +55,9 @@ typedef struct IOTHUB_HANDLE_DATA_TAG
 #define TRANSPORT "Transport"
 #define RETRY_POLICY "RetryPolicy"
 
+char* DeviceName;
+char* DeviceKey;
+
 static int strcmp_i(const char* lhs, const char* rhs)
 {
     char lc, rc;
@@ -103,11 +106,23 @@ static void* IotHub_ParseConfigurationFromJson(const char* configuration)
                 const char * IoTHubName;
                 const char * IoTHubSuffix;
                 const char * transport;
+                const char * deviceName;
+                const char * deviceKey;
 
                 if ((IoTHubName = json_object_get_string(obj, HUBNAME)) == NULL)
                 {
                     /*Codes_SRS_IOTHUBMODULE_05_006: [ If the JSON object does not contain a value named "IoTHubName" then `IotHub_ParseConfigurationFromJson` shall fail and return NULL. ]*/
                     LogError("Did not find expected %s configuration", HUBNAME);
+                    result = NULL;
+                }
+                else if ((deviceName = json_object_get_string(obj, DEVICENAME)) == NULL)
+                {
+                    LogError("Did not find expected %s configuration", DEVICENAME);
+                    result = NULL;
+                }
+                else if ((deviceKey = json_object_get_string(obj, DEVICEKEY)) == NULL)
+                {
+                    LogError("Did not find expected %s configuration", DEVICEKEY);
                     result = NULL;
                 }
                 else if ((IoTHubSuffix = json_object_get_string(obj, SUFFIX)) == NULL)
@@ -124,6 +139,9 @@ static void* IotHub_ParseConfigurationFromJson(const char* configuration)
                 }
                 else
                 {
+                    mallocAndStrcpy_s(&DeviceName, deviceName);
+                    mallocAndStrcpy_s(&DeviceKey, deviceKey);
+
                     char* name;
                     char* suffix;
                     IOTHUB_CONFIG* config;
@@ -498,8 +516,11 @@ static IOTHUBMESSAGE_DISPOSITION_RESULT IotHub_ReceiveMessageCallback(IOTHUB_MES
 }
 
 /*returns non-null if PERSONALITY has been properly populated*/
-static PERSONALITY_PTR PERSONALITY_create(const char* deviceName, const char* deviceKey, IOTHUB_HANDLE_DATA* moduleHandleData)
+static PERSONALITY_PTR PERSONALITY_create(char* deviceName, char* deviceKey, IOTHUB_HANDLE_DATA* moduleHandleData)
 {
+    mallocAndStrcpy_s(&deviceName, DeviceName);
+    mallocAndStrcpy_s(&deviceKey, DeviceKey);
+
     PERSONALITY_PTR result = (PERSONALITY_PTR)malloc(sizeof(PERSONALITY));
     if (result == NULL)
     {
@@ -586,8 +607,11 @@ static void PERSONALITY_destroy(PERSONALITY* personality)
     IoTHubClient_Destroy(personality->iothubHandle);
 }
 
-static PERSONALITY* PERSONALITY_find_or_create(IOTHUB_HANDLE_DATA* moduleHandleData, const char* deviceName, const char* deviceKey)
+static PERSONALITY* PERSONALITY_find_or_create(IOTHUB_HANDLE_DATA* moduleHandleData, char* deviceName, char* deviceKey)
 {
+    mallocAndStrcpy_s(&deviceName, DeviceName);
+    mallocAndStrcpy_s(&deviceKey, DeviceKey);
+
     /*Codes_SRS_IOTHUBMODULE_02_017: [ Otherwise `IotHub_Receive` shall not create a new personality. ]*/
     PERSONALITY* result;
     PERSONALITY_PTR* resultPtr = VECTOR_find_if(moduleHandleData->personalities, lookup_DeviceName, deviceName);
